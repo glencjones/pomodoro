@@ -16,7 +16,6 @@ def monitor():
         with open(POMODORO_LOG_FILE, "r") as f:
             tasks = json.load(f)
 
-        # Find the running task
         running_task = None
         for task in tasks:
             if task.get("state") == "running":
@@ -28,7 +27,6 @@ def monitor():
             time.sleep(2)
             continue
 
-        # Calculate total elapsed time
         total_seconds = 0
         now = datetime.now()
 
@@ -39,7 +37,6 @@ def monitor():
                 start_time = datetime.fromisoformat(block["start"])
                 total_seconds += int((now - start_time).total_seconds())
 
-        # Display
         mins, secs = divmod(total_seconds, 60)
         print(f"Task: {running_task.get('name')} [{running_task.get('phase')}] {running_task.get('key') or ''}")
         print(f"Timer: [{mins:02}:{secs:02}] Total Elapsed")
@@ -48,4 +45,3 @@ def monitor():
 
 if __name__ == "__main__":
     monitor()
-

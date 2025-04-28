@@ -1,47 +1,47 @@
-# Pomodoro CLI Tool Final
+# Pomodoro CLI Tool (Grouped Version)
 
-## Running
+Advanced Pomodoro CLI timer supporting:
+- Multiple tasks
+- Grouped reporting (by key or phase)
+- Special "Main" group for single tasks
+- Day/Week/Month reporting
+- Monitor live session from another terminal
 
-```bash
-python src/pomodoro.py start --task "Fix login bug" --phase "Coding" --key "PROJ-1234"
-python src/pomodoro.py list
-python src/monitor.py
-```
+## Features
 
-## Org-mode Capture
+- Start, Pause, Resume, Finish tasks
+- Track phases and keys (e.g., JIRA tickets)
+- Group reports by `key` or `phase`
+- Special "Main" group if only one task in a category
+- See Day number of the year
+- Simple CLI, single Python script
 
-Capture into `pomodoro-capture.org` with entries like:
-
-```org
-* Pomodoro Sessions
-** TODO Fix login bug
-:PROPERTIES:
-:Key: PROJ-1234
-:Phase: Coding
-:Started: [2025-04-27 Sun 14:00]
-:Duration: 25 min
-:END:
-```
-
-Optional Emacs org-capture snippet:
-
-```elisp
-(setq org-capture-templates
-      '(("p" "Pomodoro" entry
-         (file+headline "~/path/to/pomodoro-capture.org" "Pomodoro Sessions")
-         "* TODO %^{Task}\n:PROPERTIES:\n:Key: %^{Key}\n:Phase: %^{Phase|Coding|Testing|Admin}\n:Started: %U\n:Duration: %^{Duration|25} min\n:END:\n")))
-```
-
-## Building
+## Usage
 
 ```bash
-make package
+# Start a new task
+python3 src/pomodoro.py start --task "Write Daily Report" --phase "Daily" --key "DAILY-1"
+
+# Resume a paused task with monitor
+python3 src/pomodoro.py resume --key "DAILY-1" --monitor
+
+# List current active tasks
+python3 src/pomodoro.py list
+
+# Group report by phase
+python3 src/pomodoro.py report --period day --group phase
+
+# Monitor running task from another terminal
+python3 src/monitor.py
 ```
 
-Binary will appear under `dist/`.
+## Requirements
+- Python 3.8+
+- Install `tabulate` with `pip install tabulate`
 
-## Cleaning
+## Emacs Projectile setup
+- `.projectile` file included
+- Place under `src/` directory
 
-```bash
-make clean
-```
+---
+MIT License © 2025

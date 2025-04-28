@@ -3,6 +3,7 @@ import os
 import time
 import uuid
 import logging
+from collections import defaultdict
 from datetime import datetime, timedelta
 from tabulate import tabulate
 
@@ -196,13 +197,18 @@ class PomodoroManager:
         print(f"Deleted task with key {key}.")
 
     def list_tasks(self):
-        print("\nCurrent Tasks:")
+        today = datetime.now()
+        day_of_year = today.timetuple().tm_yday
+        print(f"\nToday: Day {day_of_year} of {today.year}\n")
 
+        print("Current Active Tasks:")
         table = []
         default_limit_minutes = 25
         now = datetime.now()
 
         for task in self.tasks:
+            if task.state == "finished":
+                continue  # Skip finished tasks
             total_elapsed_seconds = task.accumulated_time()
             elapsed_minutes = int(total_elapsed_seconds // 60)
             limit_minutes = default_limit_minutes
@@ -236,9 +242,15 @@ class PomodoroManager:
                 return
         print(f"Task with key {key} not found.")
 
-    def report(self, period="week", fmt="simple"):
+    def report(self, period="week", fmt="simple", group_by=None):
+        today = datetime.now()
+        day_of_year = today.timetuple().tm_yday
+        print(f"\nToday: Day {day_of_year} of {today.year}\n")
+
         now = datetime.now()
-        if period == "week":
+        if period == "day":
+            start_period = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        elif period == "week":
             start_period = now - timedelta(days=7)
         elif period == "month":
             start_period = now - timedelta(days=30)
@@ -246,15 +258,52 @@ class PomodoroManager:
             print("Unsupported period.")
             return
 
-        table = []
+        grouped = defaultdict(list)
+        finished_count = 0
+        total_seconds = 0
+
         for task in self.tasks:
-            total_time = task.accumulated_time()
-            if total_time > 0:
-                hours, remainder = divmod(int(total_time), 3600)
+            task_total = task.accumulated_time()
+            if task_total > 0:
+                group_key = "Main"
+                if group_by == "key" and task.key:
+                    group_key = task.key
+                elif group_by == "phase" and task.phase:
+                    group_key = task.phase
+                grouped[group_key].append((task, task_total))
+                if task.state == "finished":
+                    finished_count += 1
+                total_seconds += task_total
+
+        # Move singletons to Main group
+        adjusted = defaultdict(list)
+        for group, entries in grouped.items():
+            if len(entries) == 1 and group != "Main":
+                adjusted["Main"].extend(entries)
+            else:
+                adjusted[group] = entries
+
+        for group, entries in adjusted.items():
+            print(f"\nGroup: {group}")
+            table = []
+            for task, seconds in entries:
+                hours, remainder = divmod(int(seconds), 3600)
                 minutes = remainder // 60
-                table.append([task.key or 'N/A', task.name, task.phase, f"{hours}h {minutes}m", task.state])
-        headers = ["Key", "Task", "Phase", "Time Worked", "State"]
-        print(tabulate(table, headers=headers, tablefmt=fmt))
+                table.append([
+                    task.key or 'N/A',
+                    task.name,
+                    task.phase,
+                    f"{hours}h {minutes}m",
+                    task.state
+                ])
+            headers = ["Key", "Task", "Phase", "Time Worked", "State"]
+            print(tabulate(table, headers=headers, tablefmt=fmt))
+
+        hours, remainder = divmod(int(total_seconds), 3600)
+        minutes = remainder // 60
+        print(f"\nSummary:")
+        print(f"- Finished Tasks: {finished_count}")
+        print(f"- Total Time: {hours}h {minutes}m")
 
     def report_events(self, fmt="simple"):
         if not os.path.exists(EVENT_LOG_FILE):
@@ -306,6 +355,7 @@ if __name__ == "__main__":
     report_parser = subparsers.add_parser("report")
     report_parser.add_argument("--period", default="week")
     report_parser.add_argument("--format", default="simple")
+    report_parser.add_argument("--group", default=None)
 
     report_events_parser = subparsers.add_parser("report-events")
     report_events_parser.add_argument("--format", default="simple")
@@ -328,9 +378,8 @@ if __name__ == "__main__":
     elif args.command == "delete":
         manager.delete_task_by_key(args.key)
     elif args.command == "report":
-        manager.report(args.period, args.format)
+        manager.report(args.period, args.format, group_by=args.group)
     elif args.command == "report-events":
         manager.report_events(args.format)
     else:
         parser.print_help()
-
